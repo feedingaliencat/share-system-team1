@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-from communication_system import CmdMessageClient
-from client_daemon import load_config
 from colorMessage import Message
 import platform
 import asyncore
@@ -12,6 +10,9 @@ import sys
 import re
 import os
 
+# internal imports
+from communication_system import CmdMessageClient
+from client_daemon import load_config
 
 class RawBoxExecuter(object):
 
