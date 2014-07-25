@@ -20,7 +20,7 @@ class RawBoxExecuter(object):
         self.comm_sock = comm_sock
 
     def _create_user(self, username=None):
-        """create user if not exists"""
+        """ Create user if not exists """
         # username
         if not username:
             username = raw_input('insert your user name: ')
@@ -55,15 +55,16 @@ class RawBoxExecuter(object):
         self.print_response(self.comm_sock.read_message())
 
     def print_response(self, response):
-        ''' print response from the daemon.
-            the response is a dictionary as:
-            {
-                'request': type of command
-                'body':
-                    'result': result for command
-                    'details': list of eventual detail for command
+        """ Print response from the daemon.
+        the response is a dictionary as:
+        {
+            'request': type of command
+            'body': {
+                'result': result for command
+                'details': list of eventual detail for command
             }
-        '''
+        }
+        """
         print 'Response for "{}" command'.format(response['request'])
         print 'result: {}'.format(response['body']['result'])
         if response['body']['details']:
@@ -73,10 +74,16 @@ class RawBoxExecuter(object):
 
 
 class RawBoxCmd(cmd.Cmd):
-    """RawBox command line interface"""
+    """ RawBox command line interface """
 
-    intro = Message().color('INFO', '##### Hello guy!... or maybe girl, welcome to RawBox ######\ntype ? to see help\n\n')
-    doc_header = Message().color('INFO', "command list, type ? <topic> to see more :)")
+    intro = Message().color(
+        'INFO', 
+        ("##### Hello guy!... or maybe girl, welcome to RawBox ######\n"
+        "type ? to see help\n\n")
+    )
+    doc_header = Message().color(
+        'INFO', "command list, type ? <topic> to see more :)"
+    )
     prompt = Message().color('HEADER', '(RawBox) ')
     ruler = Message().color('INFO', '~')
 
@@ -86,7 +93,6 @@ class RawBoxCmd(cmd.Cmd):
         
     def error(self, *args):
         print "hum... unknown command, please type help"
-
 
     def do_create(self, line):
         """
@@ -123,7 +129,8 @@ def main():
     conf, is_new = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], conf['cmd_port'])
     try:
-        RawBoxCmd(RawBoxExecuter(comm_sock)).cmdloop()
+        executer = RawBoxExecuter(comm_sock) 
+        RawBoxCmd(executer).cmdloop()
     except KeyboardInterrupt:
         print "[exit]"
 
