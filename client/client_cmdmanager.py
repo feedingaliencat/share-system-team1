@@ -3,16 +3,15 @@
 
 from colorMessage import Message
 import platform
-import asyncore
 import getpass
 import cmd
-import sys
 import re
 import os
 
 # internal imports
 from communication_system import CmdMessageClient
 from client_daemon import load_config
+
 
 class RawBoxExecuter(object):
 
@@ -77,9 +76,11 @@ class RawBoxCmd(cmd.Cmd):
     """ RawBox command line interface """
 
     intro = Message().color(
-        'INFO', 
-        ("##### Hello guy!... or maybe girl, welcome to RawBox ######\n"
-        "type ? to see help\n\n")
+        'INFO',
+        (
+            "##### Hello guy!... or maybe girl, welcome to RawBox ######\n"
+            "type ? to see help\n\n"
+        )
     )
     doc_header = Message().color(
         'INFO', "command list, type ? <topic> to see more :)"
@@ -90,7 +91,7 @@ class RawBoxCmd(cmd.Cmd):
     def __init__(self, executer):
         cmd.Cmd.__init__(self)
         self.executer = executer
-        
+
     def error(self, *args):
         print "hum... unknown command, please type help"
 
@@ -129,7 +130,7 @@ def main():
     conf, is_new = load_config()
     comm_sock = CmdMessageClient(conf['cmd_host'], conf['cmd_port'])
     try:
-        executer = RawBoxExecuter(comm_sock) 
+        executer = RawBoxExecuter(comm_sock)
         RawBoxCmd(executer).cmdloop()
     except KeyboardInterrupt:
         print "[exit]"
