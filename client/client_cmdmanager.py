@@ -23,31 +23,36 @@ class RawBoxExecuter(object):
         """create user if not exists"""
         command_type = 'create_user'
 
+        # username
         if not username:
             username = raw_input('insert your user name: ')
         else:
             username = " ".join(username)
 
-        password = getpass.getpass('insert your password: ', password = True)
-        rpt_password = getpass.getpass('Repeat your password: ', password = True)
-        while password != rpt_password:
-            Message('WARNING', 'password not matched')
-            password = getpass.getpass('insert your password: ', password = True)
-            rpt_password = getpass.getpass('Repeat your password: ', password = True)
+        # password
+        while True:
+            password = getpass.getpass('insert your password: ')
+            rpt_password = getpass.getpass('Repeat your password: ')
+            if password == rpt_password:
+                break
+            else:
+                Message('WARNING', 'password not matched')
 
+        # email
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        email = raw_input('insert your user email: ')
-        
-        while not email_regex.match(email):
-            Message('WARNING', 'invalid email')
+        while True:
             email = raw_input('insert your user email: ')
+            if email_regex.match(email):
+                break
+            else:
+                Message('WARNING', 'invalid email')
 
+        # send collected informations
         param = {
             'user': username,
             'psw': password,
             'email': email
         }
-
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
 
