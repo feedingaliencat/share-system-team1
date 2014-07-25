@@ -21,8 +21,6 @@ class RawBoxExecuter(object):
 
     def _create_user(self, username=None):
         """create user if not exists"""
-        command_type = 'create_user'
-
         # username
         if not username:
             username = raw_input('insert your user name: ')
@@ -53,7 +51,7 @@ class RawBoxExecuter(object):
             'psw': password,
             'email': email
         }
-        self.comm_sock.send_message(command_type, param)
+        self.comm_sock.send_message("create_user", param)
         self.print_response(self.comm_sock.read_message())
 
     def _create_group(self, *args):
