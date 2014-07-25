@@ -87,20 +87,6 @@ class RawBoxCmd(cmd.Cmd):
     def error(self, *args):
         print "hum... unknown command, please type help"
 
-    def do_add(self, line):
-        """
-    add user <*user_list> group=<group_name> (add a new RawBox user to the group)
-    add admin <*user_list> group=<group_name> (add a new RawBox user as admin to the group)
-        """
-        if line:
-            command = line.split()[0]
-            arguments = line.split()[1:]
-            {
-                'user': self.executer._add_user,
-                'admin': self.executer._add_admin,
-            }.get(command, self.error)(arguments)
-        else:
-            Message('INFO', self.do_add.__doc__)
 
     def do_create(self, line):
         """
