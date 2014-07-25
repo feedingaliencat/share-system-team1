@@ -13,12 +13,6 @@ import re
 import os
 
 
-def take_input(message, password = False):
-    if not  password:
-        return raw_input(message)
-    else:
-        return getpass.getpass(message)
-
 class RawBoxExecuter(object):
 
     def __init__(self, comm_sock):
@@ -29,29 +23,29 @@ class RawBoxExecuter(object):
         command_type = 'create_user'
 
         if not username:
-            username = take_input('insert your user name: ')
+            username = raw_input('insert your user name: ')
         else:
             username = " ".join(username)
 
-        password = take_input('insert your password: ', password = True)
-        rpt_password = take_input('Repeat your password: ', password = True)
+        password = getpass.getpass('insert your password: ', password = True)
+        rpt_password = getpass.getpass('Repeat your password: ', password = True)
         while password != rpt_password:
             Message('WARNING', 'password not matched')
-            password = take_input('insert your password: ', password = True)
-            rpt_password = take_input('Repeat your password: ', password = True)
+            password = getpass.getpass('insert your password: ', password = True)
+            rpt_password = getpass.getpass('Repeat your password: ', password = True)
 
         email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
-        email = take_input('insert your user email: ')
+        email = raw_input('insert your user email: ')
         
         while not email_regex.match(email):
             Message('WARNING', 'invalid email')
-            email = take_input('insert your user email: ')
+            email = raw_input('insert your user email: ')
 
         param = {
-                'user': username,
-                'psw': password,
-                'email': email
-            }
+            'user': username,
+            'psw': password,
+            'email': email
+        }
 
         self.comm_sock.send_message(command_type, param)
         self.print_response(self.comm_sock.read_message())
@@ -161,12 +155,12 @@ class RawBoxCmd(cmd.Cmd):
 
     def do_q(self, line=None):
         """ exit from RawBox"""
-        if take_input('[Exit] are you sure? y/n ') == 'y':
+        if raw_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
     def do_quit(self, line=None):
         """ exit from RawBox"""
-        if take_input('[Exit] are you sure? y/n ') == 'y':
+        if raw_input('[Exit] are you sure? y/n ') == 'y':
             return True
 
 
