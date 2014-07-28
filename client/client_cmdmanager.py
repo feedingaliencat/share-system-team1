@@ -17,13 +17,13 @@ FILE_CONFIG = "config.ini"
 
 
 def ask_for_email():
-    email_regex = re.compile('[^@]+@[^@]+\.[^@]+')
+    email_regex = re.compile("[^@]+@[^@]+\.[^@]+")
     while True:
-        email = raw_input('insert your user email: ')
+        email = raw_input("insert your user email: ")
         if email_regex.match(email):
             break
         else:
-            Message('WARNING', 'invalid email')
+            Message("WARNING", "invalid email")
 
 
 class RawBoxExecuter(object):
@@ -39,17 +39,17 @@ class RawBoxExecuter(object):
 
         # password
         while True:
-            password = getpass.getpass('insert your password: ')
-            rpt_password = getpass.getpass('Repeat your password: ')
+            password = getpass.getpass("insert your password: ")
+            rpt_password = getpass.getpass("Repeat your password: ")
             if password == rpt_password:
                 break
             else:
-                Message('WARNING', 'password not matched')
+                Message("WARNING", "password not matched")
 
         # send collected informations
         param = {
-            'user': username,
-            'psw': password
+            "user": username,
+            "psw": password
         }
         self.comm_sock.send_message("create_user", param)
         self.print_response(self.comm_sock.read_message())
@@ -63,13 +63,13 @@ class RawBoxExecuter(object):
         while not code:
             code = raw_input("insert your code: ")
             if len(code) != 32:
-                Message('WARNING', 'invalid code must be 32 character')
+                Message("WARNING", "invalid code must be 32 character")
                 code = None
 
         # send collected informations
         param = {
-            'user': username,
-            'code': code
+            "user": username,
+            "code": code
         }
         self.comm_sock.send_message("activate_user", param)
         self.print_response(self.comm_sock.read_message())
@@ -80,7 +80,7 @@ class RawBoxExecuter(object):
             username = ask_for_email()
 
         param = {
-            'user': username
+            "user": username
         }
         self.comm_sock.send_message("delete_user", param)
         self.print_response(self.comm_sock.read_message())
@@ -89,37 +89,37 @@ class RawBoxExecuter(object):
         """ Print response from the daemon.
         the response is a dictionary as:
         {
-            'request': type of command
-            'body': {
-                'result': result for command
-                'details': list of eventual detail for command
+            "request": type of command
+            "body": {
+                "result": result for command
+                "details": list of eventual detail for command
             }
         }
         """
-        print 'Response for "{}" command'.format(response['request'])
-        print 'result: {}'.format(response['body']['result'])
-        if response['body']['details']:
-            print 'details:'
-            for detail in response['body']['details']:
-                print '\t{}'.format(detail)
+        print "Response for \"{}\" command".format(response["request"])
+        print "result: {}".format(response["body"]["result"])
+        if response["body"]["details"]:
+            print "details:"
+            for detail in response["body"]["details"]:
+                print "\t{}".format(detail)
 
 
 class RawBoxCmd(cmd.Cmd):
     """ RawBox command line interface """
 
     intro = Message().color(
-        'INFO',
+        "INFO",
         (
             "##### Hello guy!... or maybe girl, welcome to RawBox ######\n"
             "type ? to see help\n\n"
         )
     )
     doc_header = Message().color(
-        'INFO', "command list, type ? <topic> to see more :)"
+        "INFO", "command list, type ? <topic> to see more :)"
     )
 
-    prompt = Message().color('HEADER', '(RawBox) ')
-    ruler = Message().color('INFO', '~')
+    prompt = Message().color("HEADER", "(RawBox) ")
+    ruler = Message().color("INFO", "~")
 
     def __init__(self, executer):
         cmd.Cmd.__init__(self)
@@ -139,13 +139,13 @@ class RawBoxCmd(cmd.Cmd):
         try:
             command = line.split()[0]
             arguments = line.split()[1]
-            if command != 'user':
-                self.error("error, wrong command. Use 'create user'")
+            if command != "user":
+                self.error("error, wrong command. Use \"create user\"")
             else:
                 self.executer._create_user(arguments)
         except IndexError:
             self.error("error, must use command user")
-            Message('INFO', self.do_create.__doc__)
+            Message("INFO", self.do_create.__doc__)
 
     def do_activate(self, line):
         """
@@ -159,7 +159,7 @@ class RawBoxCmd(cmd.Cmd):
             self.executer._activate_user(user, code)
         except IndexError:
             if not user:
-                Message('INFO', self.do_activate.__doc__)
+                Message("INFO", self.do_activate.__doc__)
             else:
                 self.error(
                     "You have to specify: <your email> <your activation code>"
@@ -173,29 +173,29 @@ class RawBoxCmd(cmd.Cmd):
             user = line.split()[0]
             self.executer._delete_user(user)
         else:
-            Message('INFO', self.do_delete.__doc__)
+            Message("INFO", self.do_delete.__doc__)
 
     def do_q(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if raw_input("[Exit] are you sure? y/n ") == "y":
             return True
 
     def do_quit(self, line=None):
         """ exit from RawBox"""
-        if raw_input('[Exit] are you sure? y/n ') == 'y':
+        if raw_input("[Exit] are you sure? y/n ") == "y":
             return True
 
 
 def main():
-    if platform.system() == 'Windows':
-        os.system('cls')
+    if platform.system() == "Windows":
+        os.system("cls")
     else:
-        os.system('clear')
+        os.system("clear")
 
     config = ConfigParser.ConfigParser()
     config.read(FILE_CONFIG)
-    host = config.get('cmd', 'host')
-    port = config.get('cmd', 'port')
+    host = config.get("cmd", "host")
+    port = config.get("cmd", "port")
     comm_sock = CmdMessageClient(host, int(port))
     try:
         executer = RawBoxExecuter(comm_sock)
@@ -203,5 +203,5 @@ def main():
     except KeyboardInterrupt:
         print "[exit]"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
