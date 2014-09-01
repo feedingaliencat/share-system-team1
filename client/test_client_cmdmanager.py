@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+import unittest
+
+# local imports
 from client_cmdmanager import RawBoxExecuter
 from client_cmdmanager import RawBoxCmd
 import client_cmdmanager
-import unittest
 
 mock_input = []
 
