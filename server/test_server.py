@@ -63,7 +63,7 @@ def server_setup(root):
     server.USERS_DATA = os.path.join(root, "user_data.json")
     if not os.path.isdir(server.USERS_DIRECTORIES):
         os.makedirs(server.USERS_DIRECTORIES)
-    server.User.user_class_init()
+    # server.User.user_class_init()             no! proxare il db!
 
 
 def make_headers(user, psw):
@@ -1140,20 +1140,6 @@ class TestServerInternalErrors(unittest.TestCase):
             os.remove(cls.user_data)
         except OSError:
             pass
-
-    def test_corrupted_users_data_json(self):
-        """
-        If the user data file is corrupted, it will be raised a ValueError.
-        """
-        shutil.copy(
-            os.path.join(
-                TestServerInternalErrors.root,
-                "corrupted_user_data.json"
-            ),
-            self.user_data
-        )
-        with self.assertRaises(ValueError):
-            server_setup(TestServerInternalErrors.root)
 
     def setup_inconsistent_paths(self):
         # If a path exists in some user's paths dictionary, but it's not in the
