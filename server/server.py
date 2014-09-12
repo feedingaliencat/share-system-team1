@@ -114,89 +114,32 @@ class DBModel(peewee.Model):
 
 class User(DBModel):
     """
-    Maintaining two dictionaries:
-        · paths = { client_path : [server_path, md5/None, timestamp] }
-        None instead of the md5 means that the path is a directory.
-        · shared_resources: { server_path : [ben1, ben2, ...] }
-    The full path to access to the file is a join between USERS_DIRECTORIES and
-    the server_path.
+    ?
     """
-    users = {}
-    shared_resources = {}
+    username = CharField(unique=True)
+    psw = CharField()
+    timestamp = DoubleField()   # timestamp of the last change in the user's
+                                # files
 
-    # CLASS AND STATIC METHODS
     @staticmethod
-    def user_class_init():
-        try:
-            ud = open(USERS_DATA, "r")
-            saved = json.load(ud)
-            ud.close()
-        except IOError:
-            # The json file is not present. It will be created a new structure
-            # from scratch.
-            pass
-        # If the json file is corrupted, it will be raised a ValueError here.
-        # In that case, please remove the corrupted file.
-        else:
-            for u, v in saved["users"].iteritems():
-                User(u, None, from_dict=v)
-
-    @classmethod
-    def save_users(cls, filename=None):
-        if not filename:
-            filename = USERS_DATA
-
-        to_save = {
-            "users": {}
-        }
-        for u, v in cls.users.iteritems():
-            to_save["users"][u] = v.to_dict()
-
-        with open(filename, "w") as f:
-            json.dump(to_save, f)
-
-    # DYNAMIC METHODS
-    def __init__(self, username, password, from_dict=None):
-        # if restoring the server:
-        if from_dict:
-            self.username = username
-            self.psw = from_dict["psw"]
-            self.paths = from_dict["paths"]
-            self.timestamp = from_dict["timestamp"]
-            User.users[username] = self
-            return
-
-        # else, if a real new user is being created:
+    def new(username, password):
+        """
+        Use this method instead of User(...).
+        """
         full_path = os.path.join(USERS_DIRECTORIES, username)
         os.mkdir(full_path)
         # If a directory with the same name of the user is already present,
         # it will be raised an OSError here. It shouldn't happen, if the server
         # works right.
 
-        # OBJECT ATTRIBUTES
-        self.username = username
-        self.psw = password
-        self.paths = {}
+        u = User(username, password, time.time())
 
-        # timestamp of the last change in the user's files
-        self.timestamp = time.time()
-
-        # update users, file
-        self.push_path("", username, update_user_data=False)
-        self.push_path(
-            "shares/DO NOT WRITE HERE.txt",
-            "not_write_in_share_model.txt",
-            update_user_data=False
-        )
-        User.users[username] = self
-        User.save_users()
-
-    def to_dict(self):
-        return {
-            "psw": self.psw,
-            "paths": self.paths,
-            "timestamp": self.timestamp
-        }
+        Path.push_paths([
+            # the server_path of the user root is his username
+            ("", username),
+            ("shares/DO NOT WRITE HERE.txt", "not_write_in_share_model.txt")
+        ])
+        u.save()
 
     def create_server_path(self, client_path):
         # the client_path do not have to contain "../"
@@ -806,7 +749,6 @@ def main():
     # setup directories, load users
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
-    User.user_class_init()
 
     # run!
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
