@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+from peewee import CharField, DoubleField, BlobField, ForeignKeyField
 from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.mail import Mail, Message
 from passlib.hash import sha256_crypt
@@ -9,12 +10,11 @@ from flask import Flask, request
 import passwordmeter
 import ConfigParser
 import hashlib
+import peewee
 import shutil
 import time
 import json
 import os
-
-import database
 
 
 HTTP_OK = 200
@@ -26,6 +26,7 @@ HTTP_NOT_ACCEPTABLE = 406
 HTTP_CONFLICT = 409
 
 app = Flask(__name__)
+db = peewee.Proxy()
 api = Api(app)
 auth = HTTPBasicAuth()
 _API_PREFIX = "/API/v1/"
@@ -105,7 +106,13 @@ class MissingConfigIni(Exception):
     pass
 
 
-class User(object):
+################################### PEEWEE ###################################
+class DBModel(peewee.Model):
+    class Meta:
+        database = db
+
+
+class User(DBModel):
     """
     Maintaining two dictionaries:
         · paths = { client_path : [server_path, md5/None, timestamp] }
@@ -374,6 +381,20 @@ class User(object):
         return True
 
 
+class File(DBModel):
+    server_path = CharField(unique=True)
+    md5 = CharField(null=True)
+    timestamp = DoubleField()
+    content = BlobField(null=True)
+
+
+class Path(DBModel):
+    user = ForeignKeyField(User, related_name="paths")
+    server_path = ForeignKeyField(File, related_name="client_paths")
+    client_path = CharField()
+
+
+#################################### FLASK ####################################
 class Resource_with_auth(Resource):
     method_decorators = [auth.login_required]
 
@@ -770,7 +791,17 @@ def verify_password(username, password):
 
 def main():
     # connect database
-    database.connect_db()
+    config = ConfigParser.ConfigParser()
+    config.read(CONFIG)
+
+    database = peewee.PostgresqlDatabase(
+        config.get("database", "db_name"),
+        user=config.get("database", "db_user"),
+        password=config.get("database", "db_password"),
+        host=config.get("database", "db_host")
+    )
+    db.initialize(database)
+    db.create_tables([User, File, Path], safe=True)
 
     # setup directories, load users
     if not os.path.isdir(USERS_DIRECTORIES):
