@@ -14,6 +14,8 @@ import time
 import json
 import os
 
+import database
+
 
 HTTP_OK = 200
 HTTP_CREATED = 201
@@ -35,6 +37,7 @@ USERS_DATA = os.path.join(SERVER_ROOT, "user_data.json")
 
 PENDING_USERS = os.path.join(SERVER_ROOT, ".pending.tmp")
 CORRUPTED_DATA = os.path.join(SERVER_ROOT, "corrupted_data.json")
+CONFIG = os.path.join(SERVER_ROOT, "config.ini")
 EMAIL_SETTINGS_INI = os.path.join(SERVER_ROOT, "email_settings.ini")
 PASSWORD_NOT_ACCEPTED_DATA = os.path.join(
     SERVER_ROOT, "password_not_accepted.txt"
@@ -766,10 +769,17 @@ def verify_password(username, password):
 
 
 def main():
+    # connect database
+    database.connect_db()
+
+    # setup directories, load users
     if not os.path.isdir(USERS_DIRECTORIES):
         os.makedirs(USERS_DIRECTORIES)
     User.user_class_init()
+
+    # run!
     app.run(host="0.0.0.0", debug=True)         # TODO: remove debug=True
+
 
 api.add_resource(UsersApi, "{}Users/<string:username>".format(_API_PREFIX),
     "{}Users/".format(_API_PREFIX))
