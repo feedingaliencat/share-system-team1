@@ -233,10 +233,8 @@ class User(DBModel):
         Take a list of tuples (client_path, server_path) and push them all.
         Wait the last one before commit in database.
         """
-        for client_path, server_path in couples[:-1]:
-            self.push_path(client_path, server_path, update_user_data=False)
-
-        self.push_path(*couples[-1])
+        for client_path, server_path in couples:
+            self.push_path(client_path, server_path)
 
     def rm_path(self, client_path):
         """
