@@ -154,8 +154,7 @@ class User(DBModel):
         )
 
         Path.push_paths([
-            # the server_path of the user root is his username
-            ("", username),
+            ("", username),  # the server_path of the user root is his username
             ("shares/DO NOT WRITE HERE.txt", "not_write_in_share_model.txt")
         ])
         u.save(force_insert=True)   # primary key is not an int
@@ -166,6 +165,7 @@ class User(DBModel):
             abort(HTTP_BAD_REQUEST)
 
         # search the first directory father already present
+        # (read-write ready)
         directory_path, filename = os.path.split(client_path)
         dir_list = directory_path.split("/")
         to_be_created = []
@@ -204,6 +204,7 @@ class User(DBModel):
 
     def _get_shared_root(self, server_path):
         """
+        OBSOLETE. Use _get_ben_path instead.
         From a server_path, generate a valid shared root.
         """
         resource_name = server_path.split("/")[-1]
