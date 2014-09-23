@@ -557,28 +557,45 @@ class Files(Resource_with_auth):
             return self._download(client_path)
 
     def put(self, client_path):
-        """ Update
+        """Update
         Updates an existing file
         Expected as POST data:
-        { "file_content" : <file>} """
-        u = User.users[auth.username()]
-        try:
-            server_path = u.paths[client_path][0]
-        except KeyError:
-            abort(HTTP_NOT_FOUND)
-
-        if not can_write(u.username, server_path):
-            abort(HTTP_FORBIDDEN)
-
+        {
+            "file_content": <file>,
+            "file_md5": <string>
+        }
+        """
+        # check file integrity
         f = request.files["file_content"]
-
         if request.form["file_md5"] != to_md5(file_object=f):
             abort(HTTP_BAD_REQUEST)
 
+        # get the existent File instance
+        existing = (
+            File.select()
+                .join(Path)
+                .where(
+                    Path.client_path == server_path &
+                    Path.username == auth.username() &
+                    File.server_path == Path.server_path)
+                .get()
+        )
+
+        # check if the user can write that file
+        if not can_write(auth.username(), existing.server_path):
+            abort(HTTP_FORBIDDEN)
+
+        # write on disk
         f.seek(0)
-        f.save(os.path.join(USERS_DIRECTORIES, server_path))
-        u.push_path(client_path, server_path, only_modify=True)
-        return u.timestamp, HTTP_CREATED
+        f.save(os.path.join(USERS_DIRECTORIES, existing.server_path))
+
+        # update the File instance
+        now = time.time()
+        existing.timestamp = now
+        existing.md5 = request.form["file_md5"]
+        existing.save()
+
+        return now, HTTP_CREATED
 
     def post(self, client_path):
         """ Upload
