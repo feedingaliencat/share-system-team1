@@ -147,7 +147,11 @@ class User(DBModel):
         # it will be raised an OSError here. It shouldn't happen, if the server
         # works right.
 
-        u = User(username, password, time.time())
+        u = User(
+            username=username,
+            psw=password,
+            timestamp=time.time()
+        )
 
         Path.push_paths([
             # the server_path of the user root is his username
