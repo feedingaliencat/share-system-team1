@@ -131,7 +131,7 @@ class User(DBModel):
     """
     ?
     """
-    username = CharField(unique=True)
+    username = CharField(primary_key=True)
     psw = CharField()
     timestamp = DoubleField()   # timestamp of the last change in the user's
                                 # files
@@ -154,7 +154,7 @@ class User(DBModel):
             ("", username),
             ("shares/DO NOT WRITE HERE.txt", "not_write_in_share_model.txt")
         ])
-        u.save()
+        u.save(force_insert=True)   # primary key is not an int
 
     def create_server_path(self, client_path):
         # the client_path do not have to contain "../"
@@ -348,13 +348,15 @@ class User(DBModel):
 
 
 class File(DBModel):
-    server_path = CharField(unique=True)
+    server_path = CharField(unique=True)    # TODO: primary_key?
     md5 = CharField(null=True)
     timestamp = DoubleField()
     content = BlobField(null=True)
 
 
 class Path(DBModel):
+    # TODO: composite primary keys
+    # http://peewee.readthedocs.org/en/latest/peewee/models.html#composite-primary-keys
     user = ForeignKeyField(User, related_name="paths")
     server_path = ForeignKeyField(File, related_name="client_paths")
     client_path = CharField()
