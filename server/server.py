@@ -216,28 +216,81 @@ class User(DBModel):
         position = server_path.split("/")[2:]
         return "shares/{}/{}".format(self.username, position)
 
-    def push_path(
-            self, client_path, server_path, update_user_data=True,
-            only_modify=False):
+    def push_path(self, client_path, server_path, only_modify=False):
         md5 = to_md5(os.path.join(USERS_DIRECTORIES, server_path))
         now = time.time()
-        file_meta = [server_path, md5, now]
-        self.paths[client_path] = file_meta
 
-        is_shared = self._get_ben_path(server_path)
-        if is_shared:
-            share, ben_path = is_shared
+        with db.transaction():
+            # create the new File instance
+            try:
+                my_file = File(
+                    server_path=server_path,
+                    md5=md5,
+                    timestamp=now
+                )
+            except peewee.IntegrityError:
+                my_file = (File
+                    .select()
+                    .where(File.server_path == server_path)
+                    .get()
+                )
+                my_file.md5 = md5
+                my_file.timestamp = now
 
-            # upgrade every beneficiaries
-            for ben_name in User.shared_resources[share]:
-                ben_user = User.users[ben_name]
-                if not only_modify:
-                    ben_user.paths[ben_path] = file_meta
-                ben_user.timestamp = now
+            my_file.save()
 
-        if update_user_data:
+            # create or update Path for the owner
+            try:
+                my_path = Path(
+                    user=self,
+                    server_path=server_path,
+                    client_path=client_path
+                )
+            except peewee.IntegrityError:
+                my_path = (Path
+                    .select()
+                    .where(
+                        Path.user = self.username &
+                        Path.client_path == client_path
+                    )
+                    .get()
+                )
+                my_path.server_path = server_path
+
+            my_path.save()
+
+            # update my timestamp
             self.timestamp = now
-            User.save_users()
+            self.save()
+
+            # update beneficiaries
+            ben_path = self._get_ben_path(server_path)
+
+            for ben in _get_beneficiaries(server_path):
+                ben.timestamp = now             # TODO: unoptimezed
+                ben.save()
+
+                if only_modify:
+                    return
+
+                try:
+                    Path(
+                        user=ben.username,
+                        server_path=server_path,
+                        client_path=ben_path
+                    ).save()
+                except peewee.IntegrityError:
+                    existing_path = (Path
+                        .select()
+                        .where(
+                            Path.user = ben.username & 
+                            Path.client_path == ben_path
+                        )
+                        .get()
+                    )
+                    existing_path.server_path = server_path
+                    existing_path.save()
+
 
     def push_paths(self, couples):
         """
