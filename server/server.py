@@ -211,18 +211,10 @@ class User(DBModel):
 
     def _get_ben_path(self, server_path):
         """
-        Search a shared father for the resource. If it exists, return the
-        shared resource name and the ben_path, else return False.
+        Return the valid client shared path
         """
-        for shared_server_path in User.shared_resources.iterkeys():
-            if server_path.startswith(shared_server_path):
-                ben_path = server_path.replace(
-                    shared_server_path,
-                    self._get_shared_root(shared_server_path),
-                    1
-                )
-                return shared_server_path, ben_path
-        return False
+        position = server_path.split("/")[2:]
+        return "shares/{}/{}".format(self.username, position)
 
     def push_path(
             self, client_path, server_path, update_user_data=True,
