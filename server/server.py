@@ -112,6 +112,21 @@ class DBModel(peewee.Model):
         database = db
 
 
+def _get_beneficiaries(server_path):
+    """
+    Search a shared father for the resource and list the beneficiaries.
+    """
+    path_components = server_path.split("/")
+    owner = path_components[0]
+    path_root = "/".join(path_components[:2])
+
+    return (
+        User.select()
+            .join(Path)
+            .where(Path.server_path == server_path & User.username != owner)
+    )
+
+
 class User(DBModel):
     """
     ?
