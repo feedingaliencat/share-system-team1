@@ -159,7 +159,7 @@ class User(DBModel):
         ])
         u.save(force_insert=True)   # primary key is not an int
 
-    def create_server_path(self, client_path):
+    def create_server_path(self, client_path):      # TODO: portare fuori dalla classe
         # the client_path do not have to contain "../"
         if (client_path.startswith("../")) or ("/../" in client_path):
             abort(HTTP_BAD_REQUEST)
@@ -602,30 +602,44 @@ class Files(Resource_with_auth):
         return now, HTTP_CREATED
 
     def post(self, client_path):
-        """ Upload
-        Upload a new file
+        """Upload. Create a new File instance n Path instances.
+        Uploads a new file
         Expected as POST data:
-        { "file_content" : <file>} """
-        u = User.users[auth.username()]
-
-        if client_path in u.paths:
-            # The file is already present. To modify it, use PUT, not POST
-            abort(HTTP_CONFLICT)
-
-        server_path = u.create_server_path(client_path)
-        if not server_path:
-            # the server_path belongs to another user
-            abort(HTTP_FORBIDDEN)
-
+        {
+            "file_content": <file>,
+            "file_md5": <string>
+        }
+        """
+        # check file integrity
         f = request.files["file_content"]
-
         if request.form["file_md5"] != to_md5(file_object=f):
             abort(HTTP_BAD_REQUEST)
 
+        with db.transaction():  # TODO: rollback if needed
+            # create the server path and check if the user can write that file
+            server_path = create_server_path(auth.username(), client_path)
+            if not server_path:     # the server_path belongs to another user
+                abort(HTTP_FORBIDDEN)
+
+            # create a new File instance
+            try:
+                now = time.time()
+                created = File(
+                    server_path=server_path,
+                    md5=request.form["file_md5"],
+                    timestamp=now
+                )
+                created.save()
+            except peewee.IntegrityError:
+                # The file is already present. To modify it, use PUT, not POST
+                db.rollback()
+                abort(HTTP_CONFLICT)
+
+        # write on disk
         f.seek(0)
         f.save(os.path.join(USERS_DIRECTORIES, server_path))
-        u.push_path(client_path, server_path)
-        return u.timestamp, HTTP_CREATED
+
+        return now, HTTP_CREATED
 
 
 class Actions(Resource_with_auth):
