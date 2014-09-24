@@ -132,6 +132,8 @@ class User(DBModel):
     ?
     """
     username = CharField(primary_key=True)
+    # primary key is not an int, if you use save(), specify force_insert=True
+
     psw = CharField()
     timestamp = DoubleField()   # timestamp of the last change in the user's
                                 # files
@@ -147,17 +149,24 @@ class User(DBModel):
         # it will be raised an OSError here. It shouldn't happen, if the server
         # works right.
 
-        u = User(
+        u = User.create(
             username=username,
             psw=password,
             timestamp=time.time()
         )
 
-        Path.push_paths([
-            ("", username),  # the server_path of the user root is his username
-            ("shares/DO NOT WRITE HERE.txt", "not_write_in_share_model.txt")
-        ])
-        u.save(force_insert=True)   # primary key is not an int
+        Path.insert_many([
+            {
+                "username": username,
+                "server_path": username,
+                "client_path": ""
+            },
+            {
+                "username": username,
+                "server_path": "not_write_in_share_model.txt",
+                "client_path": "shares/DO NOT WRITE HERE.txt"
+            }
+        ]).execute()
 
     def create_server_path(self, client_path):      # TODO: portare fuori dalla classe
         # the client_path do not have to contain "../"
@@ -291,15 +300,6 @@ class User(DBModel):
                     )
                     existing_path.server_path = server_path
                     existing_path.save()
-
-
-    def push_paths(self, couples):
-        """
-        Take a list of tuples (client_path, server_path) and push them all.
-        Wait the last one before commit in database.
-        """
-        for client_path, server_path in couples:
-            self.push_path(client_path, server_path)
 
     def rm_path(self, client_path):
         """
@@ -481,7 +481,7 @@ class UsersApi(Resource):
 
         if username in pending:
             if code == pending[username]["code"]:
-                User(username, pending[username]["password"])
+                User.new(username, pending[username]["password"])
                 del pending[username]
                 if pending:
                     with open(PENDING_USERS, "w") as p_u:
