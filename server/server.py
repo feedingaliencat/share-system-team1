@@ -569,8 +569,10 @@ class Files(Resource_with_auth):
         existing.save()
 
         # write on disk
+        full_path = os.path.join(USERS_DIRECTORIES, existing.server_path)
+        os.makedirs(full_path)
         f.seek(0)
-        f.save(os.path.join(USERS_DIRECTORIES, existing.server_path))
+        f.save(full_path)
 
         return now, HTTP_CREATED
 
