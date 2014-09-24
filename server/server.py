@@ -571,29 +571,33 @@ class Files(Resource_with_auth):
             abort(HTTP_BAD_REQUEST)
 
         # get the existent File instance
-        existing = (
-            File.select()
-                .join(Path)
-                .where(
-                    Path.client_path == server_path &
-                    Path.username == auth.username() &
-                    File.server_path == Path.server_path)
-                .get()
-        )
+        try:
+            existing = (
+                File.select()
+                    .join(Path)
+                    .where(
+                        Path.client_path == server_path &
+                        Path.username == auth.username() &
+                        File.server_path == Path.server_path)
+                    .get()
+            )
+        except peewee.PeeweeException:      # TODO: find a properly exception
+            # missing file
+            abort(HTTP_BAD_REQUEST)
 
         # check if the user can write that file
         if not can_write(auth.username(), existing.server_path):
             abort(HTTP_FORBIDDEN)
-
-        # write on disk
-        f.seek(0)
-        f.save(os.path.join(USERS_DIRECTORIES, existing.server_path))
 
         # update the File instance
         now = time.time()
         existing.timestamp = now
         existing.md5 = request.form["file_md5"]
         existing.save()
+
+        # write on disk
+        f.seek(0)
+        f.save(os.path.join(USERS_DIRECTORIES, existing.server_path))
 
         return now, HTTP_CREATED
 
