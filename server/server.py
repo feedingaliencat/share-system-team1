@@ -670,42 +670,54 @@ class Actions(Resource_with_auth):
         return self._transfer(keep_the_original=False)
 
     def _transfer(self, keep_the_original=True):
-        """ Moves or copy a file from src to dest
-        depending on keep_the_original value
+        """Moves or copy (depending on keep_the_original value) a file from src
+        to dest.
+        Change Path instances but no User will be affected.
+        The File timestamp will updated.
         Expected as POST data:
-        { "file_src": <path>, "file_dest": <path> }"""
-        u = User.users[auth.username()]
+        {
+            "file_src": <path>,
+            "file_dest": <path>
+        }
+        """
         client_src = request.form["file_src"]
         client_dest = request.form["file_dest"]
 
         try:
-            server_src = u.paths[client_src][0]
-        except KeyError:
+            server_src = (
+                Path.select()
+                    .where(client_path=client_src)
+                    .get()
+            )
+        except peewee.PeeweeException:      # TODO: find a properly exception
             abort(HTTP_NOT_FOUND)
 
-        server_dest = u.create_server_path(client_dest)
-        if not server_dest:
-            # the server_path belongs to another user
-            abort(HTTP_FORBIDDEN)
+        # change on structure
+        with db.transaction():
+            server_dest = create_server_path(auth.username(), client_dest)
+            if not server_dest:
+                # the server_path belongs to another user
+                abort(HTTP_FORBIDDEN)
+
+            if keep_the_original:
+                Path.insert_many()
+            else:
+                Path.update().where()
+                clear_obsolete_paths()
+
+            now = time.time()
+            File.update()   # timestamp
 
         # changes on disk!
-        full_src = os.path.join(USERS_DIRECTORIES, server_src)
-        full_dest = os.path.join(USERS_DIRECTORIES, server_dest)
-        try:
-            if keep_the_original:
-                shutil.copy(full_src, full_dest)
-            else:
-                shutil.move(full_src, full_dest)
-        except shutil.Error:
-            return abort(HTTP_CONFLICT)         # TODO: check.
+        full_src = os.path.join(USERS_DIRECTORIES, server_src.server_path)
+        full_dest = os.path.join(USERS_DIRECTORIES, server_dest.server_path)
+
+        if keep_the_original:
+            shutil.copy(full_src, full_dest)
         else:
-            # update the structure
-            if keep_the_original:
-                u.push_path(client_dest, server_dest)
-            else:
-                u.push_path(client_dest, server_dest, update_user_data=False)
-                u.rm_path(client_src)
-            return u.timestamp, HTTP_CREATED
+            shutil.move(full_src, full_dest)
+
+        return now, HTTP_CREATED
 
     commands = {
         "delete": _delete,
