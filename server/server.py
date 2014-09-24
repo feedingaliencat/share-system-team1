@@ -595,12 +595,11 @@ class Files(Resource_with_auth):
             # create a new File instance
             try:
                 now = time.time()
-                created = File(
+                created = File.create(
                     server_path=server_path,
                     md5=request.form["file_md5"],
                     timestamp=now
                 )
-                created.save()
             except peewee.IntegrityError:
                 # The file is already present. To modify it, use PUT, not POST
                 db.rollback()
