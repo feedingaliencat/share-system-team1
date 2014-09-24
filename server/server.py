@@ -168,49 +168,6 @@ class User(DBModel):
             }
         ]).execute()
 
-    def create_server_path(self, client_path):      # TODO: portare fuori dalla classe
-        # the client_path do not have to contain "../"
-        if (client_path.startswith("../")) or ("/../" in client_path):
-            abort(HTTP_BAD_REQUEST)
-
-        # search the first directory father already present
-        # (read-write ready)
-        directory_path, filename = os.path.split(client_path)
-        dir_list = directory_path.split("/")
-        to_be_created = []
-        while (len(dir_list) > 0) \
-                and (os.path.join(*dir_list) not in self.paths):
-            to_be_created.insert(0, dir_list.pop())
-
-        if len(dir_list) == 0:
-            father = ""
-        else:
-            father = os.path.join(*dir_list)
-
-        # check if the user can write in that server directory
-        new_client_path = father
-        new_server_path = self.paths[father][0]
-
-        if not can_write(self.username, new_server_path):
-            return False
-
-        # create all the new subdirs and add them to paths
-        for d in to_be_created:
-            new_client_path = os.path.join(new_client_path, d)
-            new_server_path = os.path.join(new_server_path, d)
-            # create these directories on disk
-            full_path = os.path.join(USERS_DIRECTORIES, new_server_path)
-            if not os.path.exists(full_path):
-                os.makedirs(full_path)
-            # update the structure
-            self.push_path(
-                new_client_path,
-                new_server_path,
-                update_user_data=False
-            )
-
-        return os.path.join(new_server_path, filename)
-
     def _get_shared_root(self, server_path):
         """
         OBSOLETE. Use _get_ben_path instead.
@@ -407,9 +364,25 @@ class File(DBModel):
 class Path(DBModel):
     # TODO: composite primary keys
     # http://peewee.readthedocs.org/en/latest/peewee/models.html#composite-primary-keys
-    user = ForeignKeyField(User, related_name="paths")
+    username = ForeignKeyField(User, related_name="paths")
     server_path = ForeignKeyField(File, related_name="client_paths")
     client_path = CharField()
+
+    @staticmethod
+    def create_server_path(ownername, client_path):
+        # the client_path do not have to contain "../"
+        if (client_path.startswith("../")) or ("/../" in client_path):
+            abort(HTTP_BAD_REQUEST)
+
+        server_path = "{}/{}".format(ownername, client_path)
+        if not can_write(ownername, server_path):
+            abort(HTTP_FORBIDDEN)
+
+        return Path.create(
+            username=ownername,
+            server_path=server_path,
+            client_path=client_path
+        )
 
 
 #################################### FLASK ####################################
@@ -617,9 +590,7 @@ class Files(Resource_with_auth):
 
         with db.transaction():  # TODO: rollback if needed
             # create the server path and check if the user can write that file
-            server_path = create_server_path(auth.username(), client_path)
-            if not server_path:     # the server_path belongs to another user
-                abort(HTTP_FORBIDDEN)
+            server_path = Path.create_server_path(auth.username(), client_path)
 
             # create a new File instance
             try:
@@ -637,7 +608,9 @@ class Files(Resource_with_auth):
 
         # write on disk
         f.seek(0)
-        f.save(os.path.join(USERS_DIRECTORIES, server_path))
+        full_path = os.path.join(USERS_DIRECTORIES, server_path.server_path)
+        os.makedirs(full_path)
+        f.save(full_path)
 
         return now, HTTP_CREATED
 
@@ -694,10 +667,7 @@ class Actions(Resource_with_auth):
 
         # change on structure
         with db.transaction():
-            server_dest = create_server_path(auth.username(), client_dest)
-            if not server_dest:
-                # the server_path belongs to another user
-                abort(HTTP_FORBIDDEN)
+            server_dest = Path.create_server_path(auth.username(), client_dest)
 
             if keep_the_original:
                 Path.insert_many()
@@ -712,6 +682,7 @@ class Actions(Resource_with_auth):
         full_src = os.path.join(USERS_DIRECTORIES, server_src.server_path)
         full_dest = os.path.join(USERS_DIRECTORIES, server_dest.server_path)
 
+        os.makedirs(full_dest)
         if keep_the_original:
             shutil.copy(full_src, full_dest)
         else:
